@@ -1,4 +1,6 @@
-import { network } from "hardhat";
+import { ethers, network } from "hardhat";
+
+const zeroAddr = ethers.constants.AddressZero;
 
 const take = async (): Promise<any> => {
   return await network.provider.request({
@@ -14,4 +16,4 @@ const restore = async (id: string) => {
   });
 };
 
-export { take, restore };
+export { zeroAddr, take, restore };
