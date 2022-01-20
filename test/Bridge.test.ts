@@ -22,12 +22,14 @@ const firstChain = {
   chainId: 1,
   itemId1: 1 * rangeUnit, // chainId * rangeUnit
   itemId2: 1 * rangeUnit + 1,
+  itemId3: 1 * rangeUnit + 2,
 };
 
 const secondChain = {
   chainId: 2,
   itemId1: 2 * rangeUnit, // chainId * rangeUnit
   itemId2: 2 * rangeUnit + 1,
+  itemId3: 2 * rangeUnit + 2,
 };
 
 const getHashBytesFromEvent = async (tx: any) => {
@@ -76,11 +78,12 @@ describe("Bridge", function () {
     );
     await sideNFT.deployed();
 
+    // Deploy two bridges with different chainIds
     mainBridge = await new BridgeMock__factory(owner).deploy(
       name,
       version,
-      mainNFT.address,
       gateway.address,
+      mainNFT.address,
       firstChain.chainId
     );
     await mainBridge.deployed();
@@ -88,8 +91,8 @@ describe("Bridge", function () {
     sideBridge = await new BridgeMock__factory(owner).deploy(
       name,
       version,
-      sideNFT.address,
       gateway.address,
+      sideNFT.address,
       secondChain.chainId
     );
     await sideBridge.deployed();
@@ -97,6 +100,20 @@ describe("Bridge", function () {
     // Grant roles to bridges (to call safeBridgeMint)
     await mainNFT.grantRole(utils.bridgeRole, mainBridge.address);
     await sideNFT.grantRole(utils.bridgeRole, sideBridge.address);
+
+    // Minting tokens on both sides
+    await mainNFT.safeMint(owner.address, uri);
+    await mainNFT.safeMint(alice.address, uri);
+
+    await sideNFT.safeMint(owner.address, uri);
+    await sideNFT.safeMint(alice.address, uri);
+
+    // Updating chain support
+    await mainBridge.connect(gateway).addChain(secondChain.chainId);
+    await sideBridge.connect(gateway).addChain(firstChain.chainId);
+
+    // Approve item
+    await mainNFT.approve(mainBridge.address, firstChain.itemId1);
   });
 
   beforeEach(async () => {
@@ -131,27 +148,14 @@ describe("Bridge", function () {
     it("Mint assignes correct ids based on chain id", async () => {
       await expect(mainNFT.safeMint(owner.address, uri))
         .to.emit(mainNFT, "Transfer")
-        .withArgs(utils.zeroAddr, owner.address, firstChain.itemId1);
-      await expect(mainNFT.safeMint(owner.address, uri))
-        .to.emit(mainNFT, "Transfer")
-        .withArgs(utils.zeroAddr, owner.address, firstChain.itemId2);
+        .withArgs(utils.zeroAddr, owner.address, firstChain.itemId3);
+      await expect(sideNFT.safeMint(owner.address, uri))
+        .to.emit(sideNFT, "Transfer")
+        .withArgs(utils.zeroAddr, owner.address, secondChain.itemId3);
     });
   });
 
   describe("Bridge", function () {
-    beforeEach(async () => {
-      // Minting tokens on both sides
-      await mainNFT.safeMint(owner.address, uri);
-      await mainNFT.safeMint(alice.address, uri);
-
-      await sideNFT.safeMint(owner.address, uri);
-      await sideNFT.safeMint(alice.address, uri);
-
-      // Updating chain support
-      await mainBridge.connect(gateway).addChain(secondChain.chainId);
-      await sideBridge.connect(gateway).addChain(firstChain.chainId);
-    });
-
     it("Only gateway can add new chains", async () => {
       await expect(mainBridge.addChain(42)).to.be.revertedWith(
         "Only gateway can add chain"
@@ -160,8 +164,6 @@ describe("Bridge", function () {
 
     describe("Swap", function () {
       it("Calling swap emits event", async () => {
-        await mainNFT.approve(mainBridge.address, firstChain.itemId1);
-
         await expect(
           mainBridge.swap(firstChain.itemId1, alice.address, secondChain.chainId)
         )
@@ -179,7 +181,6 @@ describe("Bridge", function () {
       });
 
       it("Can't swap to unsupported chain", async () => {
-        await mainNFT.approve(mainBridge.address, firstChain.itemId1);
         await expect(
           mainBridge.swap(firstChain.itemId1, alice.address, 42)
         ).to.be.revertedWith("Swap to an unsupported chain");
@@ -194,8 +195,6 @@ describe("Bridge", function () {
 
     describe("Redeem", function () {
       beforeEach(async () => {
-        // Approve item to bridge
-        await mainNFT.approve(mainBridge.address, firstChain.itemId1);
         // Make swap
         const tx = await mainBridge.swap(
           firstChain.itemId1,
