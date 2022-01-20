@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-import "./Asset721.sol";
+import "../Asset721.sol";
 
 /** @dev Bridge.sol with constructor accepting chainId, so we can emulate different chains in tests. */
 contract BridgeMock is EIP712, IERC721Receiver {
