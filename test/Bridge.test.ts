@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
 import { Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-import * as snapshot from "./utils";
+import * as utils from "./utils";
 
 // Asset 721 metadata
 const name = "Asset721";
@@ -11,28 +11,19 @@ const symbol = "nft";
 const rangeUnit = 10000;
 const uri = "https://gateway.pinata.cloud/ipfs/uri/{id}.json";
 
-// Test data
-const zeroAddr = ethers.constants.AddressZero;
-
+// Bridge data
+const version = "1";
 const firstChain = {
   chainId: 1,
-  itemId1: 1 * rangeUnit, // id * rangeUnit
+  itemId1: 1 * rangeUnit, // chainId * rangeUnit
   itemId2: 1 * rangeUnit + 1,
 };
 
 const secondChain = {
   chainId: 2,
-  itemId1: 2 * rangeUnit, // id * rangeUnit
+  itemId1: 2 * rangeUnit, // chainId * rangeUnit
   itemId2: 2 * rangeUnit + 1,
 };
-
-// Bridge data
-const version = "1";
-
-// AccessControl roles in bytes32 string
-// DEFAULT_ADMIN_ROLE, MINTER_ROLE, BURNER_ROLE, CREATOR_ROLE
-const adminRole = ethers.constants.HashZero;
-const bridgeRole = ethers.utils.solidityKeccak256(["string"], ["BRIDGE_ROLE"]);
 
 const getHashBytesFromEvent = async (tx: any) => {
   const receipt = await tx.wait();
@@ -56,14 +47,16 @@ describe("Bridge", function () {
     owner: SignerWithAddress,
     alice: SignerWithAddress,
     bob: SignerWithAddress,
+    gateway: SignerWithAddress,
     addrs: SignerWithAddress[],
     snapId: string,
+    msgHash: string,
     signature: string,
     invalidSignature: string,
     bytesHash: Uint8Array;
 
   before(async () => {
-    [owner, alice, bob, ...addrs] = await ethers.getSigners();
+    [owner, alice, bob, gateway, ...addrs] = await ethers.getSigners();
     // Using AssetMock in which we can pass chainId to emulate different chains in tests.
     Asset721 = await ethers.getContractFactory("Asset721Mock");
     // Using BridgeMock in which we can pass chainId to emulate different chains in tests.
@@ -79,7 +72,7 @@ describe("Bridge", function () {
       name,
       version,
       mainNFT.address,
-      bob.address,
+      gateway.address,
       firstChain.chainId
     );
     await mainBridge.deployed();
@@ -88,33 +81,33 @@ describe("Bridge", function () {
       name,
       version,
       sideNFT.address,
-      bob.address,
+      gateway.address,
       secondChain.chainId
     );
     await sideBridge.deployed();
 
     // Grant roles to bridges (to call safeBridgeMint)
-    await mainNFT.grantRole(bridgeRole, mainBridge.address);
-    await sideNFT.grantRole(bridgeRole, sideBridge.address);
+    await mainNFT.grantRole(utils.bridgeRole, mainBridge.address);
+    await sideNFT.grantRole(utils.bridgeRole, sideBridge.address);
   });
 
   beforeEach(async () => {
-    snapId = await snapshot.take();
+    snapId = await utils.evmTakeSnap();
   });
 
   afterEach(async () => {
-    await snapshot.restore(snapId);
+    await utils.evmRestoreSnap(snapId);
   });
 
   describe("Deployment", function () {
     it("Should deploy main bridge with correct params", async () => {
       expect(await mainBridge.asset()).to.equal(mainNFT.address);
-      expect(await mainBridge.gateway()).to.equal(bob.address);
+      expect(await mainBridge.gateway()).to.equal(gateway.address);
     });
 
     it("Should deploy side bridge with correct params", async () => {
       expect(await mainBridge.asset()).to.equal(mainNFT.address);
-      expect(await mainBridge.gateway()).to.equal(bob.address);
+      expect(await mainBridge.gateway()).to.equal(gateway.address);
     });
 
     it("Should deploy main nft with correct params", async () => {
@@ -130,10 +123,10 @@ describe("Bridge", function () {
     it("Mint assignes correct ids based on chain id", async () => {
       await expect(mainNFT.safeMint(owner.address, uri))
         .to.emit(mainNFT, "Transfer")
-        .withArgs(zeroAddr, owner.address, firstChain.itemId1);
+        .withArgs(utils.zeroAddr, owner.address, firstChain.itemId1);
       await expect(mainNFT.safeMint(owner.address, uri))
         .to.emit(mainNFT, "Transfer")
-        .withArgs(zeroAddr, owner.address, firstChain.itemId2);
+        .withArgs(utils.zeroAddr, owner.address, firstChain.itemId2);
     });
   });
 
@@ -147,8 +140,8 @@ describe("Bridge", function () {
       await sideNFT.safeMint(alice.address, uri);
 
       // Updating chain support
-      await mainBridge.connect(bob).addChain(secondChain.chainId);
-      await sideBridge.connect(bob).addChain(secondChain.chainId);
+      await mainBridge.connect(gateway).addChain(secondChain.chainId);
+      await sideBridge.connect(gateway).addChain(firstChain.chainId);
     });
 
     it("Only gateway can add new chains", async () => {
@@ -193,26 +186,29 @@ describe("Bridge", function () {
 
     describe("Redeem", function () {
       beforeEach(async () => {
-        // Make swap before testing redeem
+        // Approve item to bridge
         await mainNFT.approve(mainBridge.address, firstChain.itemId1);
+        // Make swap
         const tx = await mainBridge.swap(
           firstChain.itemId1,
           alice.address,
           secondChain.chainId
         );
+        // Save hash and signature
         bytesHash = await getHashBytesFromEvent(tx);
-        signature = await signHash(bob, bytesHash);
-        invalidSignature = await signHash(owner, bytesHash);
+        msgHash = ethers.utils.hashMessage(bytesHash);
+        signature = await signHash(gateway, bytesHash);
+        invalidSignature = await signHash(bob, bytesHash);
       });
 
-      it("Redeem emits event", async () => {
+      it("Redeem emits events", async () => {
         const recovered = ethers.utils.verifyMessage(bytesHash, signature);
-        expect(recovered).to.equal(bob.address);
+        expect(recovered).to.equal(gateway.address);
         await expect(
           sideBridge
-            .connect(bob)
+            .connect(gateway)
             .redeem(
-              ethers.utils.hashMessage(bytesHash),
+              msgHash,
               ethers.utils.splitSignature(signature),
               firstChain.itemId1,
               uri,
@@ -221,20 +217,16 @@ describe("Bridge", function () {
             )
         )
           .to.emit(sideBridge, "SwapRedeemed")
-          .withArgs(
-            ethers.utils.hashMessage(bytesHash),
-            firstChain.itemId1,
-            firstChain.chainId,
-            alice.address
-          )
+          .withArgs(msgHash, firstChain.itemId1, firstChain.chainId, alice.address)
           .and.to.emit(sideNFT, "Transfer")
-          .withArgs(zeroAddr, alice.address, firstChain.itemId1);
+          // Check item was minted (transfer from zero)
+          .withArgs(utils.zeroAddr, alice.address, firstChain.itemId1);
       });
 
       it("Only gateway can execute redeem", async () => {
         await expect(
           sideBridge.redeem(
-            ethers.utils.hashMessage(bytesHash),
+            msgHash,
             ethers.utils.splitSignature(signature),
             firstChain.itemId1,
             uri,
@@ -246,9 +238,9 @@ describe("Bridge", function () {
 
       it("Can't redeem twice", async () => {
         await sideBridge
-          .connect(bob)
+          .connect(gateway)
           .redeem(
-            ethers.utils.hashMessage(bytesHash),
+            msgHash,
             ethers.utils.splitSignature(signature),
             firstChain.itemId1,
             uri,
@@ -257,9 +249,9 @@ describe("Bridge", function () {
           );
         await expect(
           sideBridge
-            .connect(bob)
+            .connect(gateway)
             .redeem(
-              ethers.utils.hashMessage(bytesHash),
+              msgHash,
               ethers.utils.splitSignature(signature),
               firstChain.itemId1,
               uri,
@@ -272,9 +264,9 @@ describe("Bridge", function () {
       it("ECDSA: invalid signature", async () => {
         await expect(
           sideBridge
-            .connect(bob)
+            .connect(gateway)
             .redeem(
-              ethers.utils.hashMessage(bytesHash),
+              msgHash,
               ethers.utils.splitSignature(invalidSignature),
               firstChain.itemId1,
               uri,
@@ -283,10 +275,76 @@ describe("Bridge", function () {
             )
         ).to.be.revertedWith("ECDSA: invalid signature");
       });
-    });
 
-    // it("Swapping from Main to Side and backwards", async () => {
-      
-    // });
+      describe("After redeem", function () {
+        beforeEach(async () => {
+          await sideBridge
+            .connect(gateway)
+            .redeem(
+              msgHash,
+              ethers.utils.splitSignature(signature),
+              firstChain.itemId1,
+              uri,
+              alice.address,
+              firstChain.chainId
+            );
+        });
+
+        it("Item must be locked on chainFrom bridge", async () => {
+          expect(await mainNFT.ownerOf(firstChain.itemId1)).to.equal(mainBridge.address);
+        });
+
+        it("Item URI must not change in chainTo", async () => {
+          expect(await sideNFT.tokenURI(firstChain.itemId1)).to.equal(
+            await mainNFT.tokenURI(firstChain.itemId1)
+          );
+        });
+
+        describe("Swap back to main chain", function () {
+          beforeEach(async () => {
+            // Approve item to bridge
+            await sideNFT.connect(alice).approve(sideBridge.address, firstChain.itemId1);
+          });
+
+          it("Swap on side chain emits events", async () => {
+            await expect(
+              sideBridge
+                .connect(alice)
+                .swap(firstChain.itemId1, owner.address, firstChain.chainId)
+            )
+              .to.emit(sideBridge, "SwapInitialized")
+              .and.to.emit(sideNFT, "Transfer")
+              .withArgs(alice.address, sideBridge.address, firstChain.itemId1);
+          });
+
+          it("Redeem on main chain, item should NOT be minted", async () => {
+            const tx = await sideBridge
+              .connect(alice)
+              .swap(firstChain.itemId1, owner.address, firstChain.chainId);
+            bytesHash = await getHashBytesFromEvent(tx);
+            msgHash = ethers.utils.hashMessage(bytesHash);
+            signature = await signHash(gateway, bytesHash);
+
+            await expect(
+              mainBridge
+                .connect(gateway)
+                .redeem(
+                  msgHash,
+                  ethers.utils.splitSignature(signature),
+                  firstChain.itemId1,
+                  uri,
+                  owner.address,
+                  secondChain.chainId
+                )
+            )
+              .to.emit(mainBridge, "SwapRedeemed")
+              .withArgs(msgHash, firstChain.itemId1, secondChain.chainId, owner.address)
+              .and.to.emit(mainNFT, "Transfer")
+              // Check item was NOT minted (transfer locked item from bridge)
+              .withArgs(mainBridge.address, owner.address, firstChain.itemId1);
+          });
+        });
+      });
+    });
   });
 });
