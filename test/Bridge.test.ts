@@ -1,7 +1,12 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import {
+  Asset721Mock__factory,
+  Asset721Mock,
+  BridgeMock__factory,
+  BridgeMock,
+} from "../typechain-types";
 
 import * as utils from "./utils";
 
@@ -38,17 +43,14 @@ const signHash = async (signer: SignerWithAddress, bytes: Uint8Array) => {
 };
 
 describe("Bridge", function () {
-  let mainNFT: Contract,
-    sideNFT: Contract,
-    mainBridge: Contract,
-    sideBridge: Contract,
-    Asset721: ContractFactory,
-    Bridge: ContractFactory,
+  let mainNFT: Asset721Mock,
+    sideNFT: Asset721Mock,
+    mainBridge: BridgeMock,
+    sideBridge: BridgeMock,
     owner: SignerWithAddress,
     alice: SignerWithAddress,
     bob: SignerWithAddress,
     gateway: SignerWithAddress,
-    addrs: SignerWithAddress[],
     snapId: string,
     msgHash: string,
     signature: string,
@@ -56,19 +58,25 @@ describe("Bridge", function () {
     bytesHash: Uint8Array;
 
   before(async () => {
-    [owner, alice, bob, gateway, ...addrs] = await ethers.getSigners();
-    // Using AssetMock in which we can pass chainId to emulate different chains in tests.
-    Asset721 = await ethers.getContractFactory("Asset721Mock");
-    // Using BridgeMock in which we can pass chainId to emulate different chains in tests.
-    Bridge = await ethers.getContractFactory("BridgeMock");
+    [owner, alice, bob, gateway] = await ethers.getSigners();
 
     // Deploy assets
-    mainNFT = await Asset721.deploy(name, symbol, rangeUnit, firstChain.chainId);
+    mainNFT = await new Asset721Mock__factory(owner).deploy(
+      name,
+      symbol,
+      rangeUnit,
+      firstChain.chainId
+    );
     await mainNFT.deployed();
-    sideNFT = await Asset721.deploy(name, symbol, rangeUnit, secondChain.chainId);
+    sideNFT = await new Asset721Mock__factory(owner).deploy(
+      name,
+      symbol,
+      rangeUnit,
+      secondChain.chainId
+    );
     await sideNFT.deployed();
 
-    mainBridge = await Bridge.deploy(
+    mainBridge = await new BridgeMock__factory(owner).deploy(
       name,
       version,
       mainNFT.address,
@@ -77,7 +85,7 @@ describe("Bridge", function () {
     );
     await mainBridge.deployed();
 
-    sideBridge = await Bridge.deploy(
+    sideBridge = await new BridgeMock__factory(owner).deploy(
       name,
       version,
       sideNFT.address,
