@@ -1,17 +1,19 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-import * as snapshot from "./utils";
+import * as utils from "./utils";
 
 // NFT metadata
 const name = "Asset721";
 const symbol = "nft721";
+const uri = "https://gateway.pinata.cloud/ipfs/uri/1.json";
 
-// Test data
-const zeroAddr = ethers.constants.AddressZero;
-const itemURI = "https://gateway.pinata.cloud/ipfs/uri/1.json";
+const rangeUnit = 10000;
+const chainId: any = network.config.chainId;
+const itemId1 = chainId * rangeUnit;
+const itemId2 = chainId * rangeUnit + 1;
 
 describe("Asset721", function () {
   let Asset721: ContractFactory,
@@ -25,18 +27,18 @@ describe("Asset721", function () {
     [owner, alice, bob] = await ethers.getSigners();
     Asset721 = await ethers.getContractFactory(name);
 
-    nft = await Asset721.deploy(name, symbol);
+    nft = await Asset721.deploy(name, symbol, rangeUnit);
     await nft.deployed();
   });
 
   beforeEach(async () => {
-    snapId = await snapshot.take();
-    await nft.safeMint(owner.address, itemURI);
-    await nft.safeMint(alice.address, itemURI);
+    snapId = await utils.evmTakeSnap();
+    await nft.safeMint(owner.address, uri);
+    await nft.safeMint(alice.address, uri);
   });
 
   afterEach(async () => {
-    await snapshot.restore(snapId);
+    await utils.evmRestoreSnap(snapId);
   });
 
   describe("Deployment", function () {
@@ -48,30 +50,54 @@ describe("Asset721", function () {
       expect(await nft.symbol()).to.be.equal(symbol);
     });
 
-    it("Should set the correct owner of the contract", async () => {
-      expect(await nft.owner()).to.equal(owner.address);
+    it("Has a chainId", async () => {
+      expect(await nft.chainId()).to.be.equal(chainId);
+    });
+
+    it("Supports interface", async () => {
+      expect(await nft.supportsInterface(utils.interfaceIds.erc721)).to.equal(true);
     });
   });
 
-  describe("Ownership", function () {
+  describe("AccessControl", function () {
     it("Only owner can mint items", async () => {
-      await expect(nft.connect(alice).safeMint(bob.address, itemURI)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
+      await expect(nft.connect(alice).safeMint(bob.address, uri)).to.be.revertedWith(
+        `AccessControl: account ${alice.address.toLowerCase()} is missing role ${
+          utils.adminRole
+        }`
       );
+    });
+
+    it("Only bridge can mint items with id", async () => {
+      await expect(
+        nft.connect(bob).safeMintBridge(1337, 1337, bob.address, uri)
+      ).to.be.revertedWith(
+        `AccessControl: account ${bob.address.toLowerCase()} is missing role ${
+          utils.bridgeRole
+        }`
+      );
+    });
+  });
+
+  describe("SafeMintBridge", function () {
+    it("Bridge can mint with id", async () => {
+      await expect(nft.safeMintBridge(1337, 1337, bob.address, uri))
+        .to.emit(nft, "Transfer")
+        .withArgs(utils.zeroAddr, bob.address, 1337);
     });
   });
 
   describe("Approve", function () {
     it("Approve emits event", async () => {
-      await expect(nft.approve(alice.address, 1))
+      await expect(nft.approve(alice.address, itemId1))
         .to.emit(nft, "Approval")
-        .withArgs(owner.address, alice.address, 1);
+        .withArgs(owner.address, alice.address, itemId1);
     });
 
     it("Can get approved account", async () => {
-      await nft.approve(alice.address, 1);
-      expect(await nft.getApproved(1)).to.be.equal(alice.address);
-      expect(await nft.getApproved(2)).to.be.equal(zeroAddr);
+      await nft.approve(alice.address, itemId1);
+      expect(await nft.getApproved(itemId1)).to.be.equal(alice.address);
+      expect(await nft.getApproved(itemId2)).to.be.equal(utils.zeroAddr);
     });
 
     it("Approval for all emits event", async () => {
@@ -93,13 +119,13 @@ describe("Asset721", function () {
     });
 
     it("Can't approve to current owner", async () => {
-      await expect(nft.approve(owner.address, 1)).to.be.revertedWith(
+      await expect(nft.approve(owner.address, itemId1)).to.be.revertedWith(
         "ERC721: approval to current owner"
       );
     });
 
     it("Can't approve if caller is not owner nor approved for all", async () => {
-      await expect(nft.approve(bob.address, 2)).to.be.revertedWith(
+      await expect(nft.approve(bob.address, itemId2)).to.be.revertedWith(
         "ERC721: approve caller is not owner nor approved for all"
       );
     });
@@ -107,36 +133,49 @@ describe("Asset721", function () {
 
   describe("Transfers", function () {
     it("Transfer from emits event", async () => {
-      await expect(nft.transferFrom(owner.address, alice.address, 1))
+      await expect(nft.transferFrom(owner.address, alice.address, itemId1))
         .to.emit(nft, "Transfer")
-        .withArgs(owner.address, alice.address, 1);
+        .withArgs(owner.address, alice.address, itemId1);
     });
 
     it("Safe Transfer from emits event", async () => {
       await expect(
-        nft["safeTransferFrom(address,address,uint256)"](owner.address, alice.address, 1)
+        nft["safeTransferFrom(address,address,uint256)"](
+          owner.address,
+          alice.address,
+          itemId1
+        )
       )
         .to.emit(nft, "Transfer")
-        .withArgs(owner.address, alice.address, 1);
+        .withArgs(owner.address, alice.address, itemId1);
     });
 
     it("Can't transfer from if caller is not owner nor approved for all", async () => {
-      await expect(nft.transferFrom(owner.address, alice.address, 2)).to.be.revertedWith(
-        "ERC721: transfer caller is not owner nor approved"
-      );
       await expect(
-        nft["safeTransferFrom(address,address,uint256)"](owner.address, alice.address, 2)
+        nft.transferFrom(owner.address, alice.address, itemId2)
+      ).to.be.revertedWith("ERC721: transfer caller is not owner nor approved");
+      await expect(
+        nft["safeTransferFrom(address,address,uint256)"](
+          owner.address,
+          alice.address,
+          itemId2
+        )
       ).to.be.revertedWith("ERC721: transfer caller is not owner nor approved");
     });
   });
 
   describe("Getting item data", function () {
+    it("Can check tokenId exists", async () => {
+      expect(await nft.exists(itemId1)).to.be.equal(true);
+      expect(await nft.exists(1337)).to.be.equal(false);
+    });
+
     it("Can get tokenURI by id", async () => {
-      expect(await nft.tokenURI(1)).to.be.equal(itemURI);
+      expect(await nft.tokenURI(itemId1)).to.be.equal(uri);
     });
 
     it("Can get item owner by id", async () => {
-      expect(await nft.ownerOf(1)).to.be.equal(owner.address);
+      expect(await nft.ownerOf(itemId1)).to.be.equal(owner.address);
     });
 
     it("Can get user balances", async () => {
@@ -144,13 +183,13 @@ describe("Asset721", function () {
     });
 
     it("Can't get owner for nonexistent token", async () => {
-      await expect(nft.ownerOf(15)).to.be.revertedWith(
+      await expect(nft.ownerOf(1337)).to.be.revertedWith(
         "ERC721: owner query for nonexistent token"
       );
     });
 
     it("Can't get balance of zero address", async () => {
-      await expect(nft.balanceOf(zeroAddr)).to.be.revertedWith(
+      await expect(nft.balanceOf(utils.zeroAddr)).to.be.revertedWith(
         "ERC721: balance query for the zero address"
       );
     });
