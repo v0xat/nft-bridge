@@ -69,9 +69,9 @@ contract Bridge is EIP712, IERC721Receiver {
   
   mapping(bytes32 => bool) public redeemed;
 
-  constructor(string memory name, string memory version, address _asset, address _gateway) EIP712(name, version) {
-    asset = _asset;
+  constructor(string memory name, string memory version, address _gateway, address _asset) EIP712(name, version) {
     gateway = _gateway;
+    asset = _asset;
     chainId = block.chainid;
   }
 

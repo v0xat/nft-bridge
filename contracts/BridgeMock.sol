@@ -72,12 +72,12 @@ contract BridgeMock is EIP712, IERC721Receiver {
   constructor(
     string memory name,
     string memory version,
-    address _asset,
     address _gateway,
+    address _asset,
     uint256 _chainId
   ) EIP712(name, version) {
-    asset = _asset;
     gateway = _gateway;
+    asset = _asset;
     chainId = _chainId;
   }
 
