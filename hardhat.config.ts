@@ -18,29 +18,28 @@ const chainIds = {
   bscTestnet: 97,
 };
 
-let mnemonic: string;
-if (!process.env.MNEMONIC) {
+// Ensure that we have all the environment variables we need.
+const mnemonic: string | undefined = process.env.MNEMONIC;
+if (!mnemonic) {
   throw new Error("Please set your MNEMONIC in a .env file");
-} else {
-  mnemonic = process.env.MNEMONIC;
 }
 
-let alchemyApiKey: string;
-if (!process.env.ALCHEMY_API_KEY) {
+const alchemyApiKey: string | undefined = process.env.ALCHEMY_API_KEY;
+if (!alchemyApiKey) {
   throw new Error("Please set your ALCHEMY_API_KEY in a .env file");
-} else {
-  alchemyApiKey = process.env.ALCHEMY_API_KEY;
 }
 
 function createNetworkConfig(network: keyof typeof chainIds): NetworkUserConfig {
   const url: string = `https://eth-${network}.g.alchemy.com/v2/${alchemyApiKey}`;
   return {
     accounts: {
-      count: 2,
+      count: 10,
       mnemonic,
     },
     chainId: chainIds[network],
     url,
+    // gas: 2100000,
+    // gasPrice: 8000000000,
   };
 }
 
@@ -105,6 +104,10 @@ const config: HardhatUserConfig = {
     token: "ETH",
     gasPriceApi: "https://api.etherscan.io/api?module=proxy&action=eth_gasPrice",
     coinmarketcap: process.env.CMC_API_KEY,
+  },
+  typechain: {
+    outDir: "types",
+    target: "ethers-v5",
   },
 };
 

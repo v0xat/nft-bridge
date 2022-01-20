@@ -21,6 +21,9 @@ jobs:
             
       - name: Install dependencies
         run: npm ci
+
+      - name: Generate TypeChain artifacts
+        run: npm run typechain
         
       - name: Run coverage
         run: npx hardhat coverage --config hardhat-ci.config.ts

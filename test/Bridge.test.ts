@@ -6,7 +6,7 @@ import {
   Asset721Mock,
   BridgeMock__factory,
   BridgeMock,
-} from "../typechain-types";
+} from "../types";
 
 import * as utils from "./utils";
 
