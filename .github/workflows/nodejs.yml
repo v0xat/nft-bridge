@@ -23,7 +23,7 @@ jobs:
         run: npm ci
 
       - name: Generate TypeChain artifacts
-        run: npm run typechain
+        run: npm run typechain --config hardhat-ci.config.ts
         
       - name: Run coverage
         run: npx hardhat coverage --config hardhat-ci.config.ts
