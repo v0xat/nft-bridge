@@ -221,6 +221,8 @@ describe("Bridge", function () {
           .and.to.emit(sideNFT, "Transfer")
           // Check item was minted (transfer from zero)
           .withArgs(utils.zeroAddr, alice.address, firstChain.itemId1);
+
+        expect(await sideBridge.redeemed(msgHash)).to.be.equal(true);
       });
 
       it("Only gateway can execute redeem", async () => {
@@ -342,6 +344,8 @@ describe("Bridge", function () {
               .and.to.emit(mainNFT, "Transfer")
               // Check item was NOT minted (transfer locked item from bridge)
               .withArgs(mainBridge.address, owner.address, firstChain.itemId1);
+
+            expect(await mainBridge.redeemed(msgHash)).to.be.equal(true);
           });
         });
       });
