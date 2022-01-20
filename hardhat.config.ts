@@ -12,8 +12,10 @@ import "solidity-coverage";
 import "./tasks/index.ts";
 
 const chainIds = {
-  mumbai: 80001,
   rinkeby: 4,
+  ropsten: 3,
+  kovan: 42,
+  bscTestnet: 97,
 };
 
 let mnemonic: string;
@@ -31,7 +33,7 @@ if (!process.env.ALCHEMY_API_KEY) {
 }
 
 function createNetworkConfig(network: keyof typeof chainIds): NetworkUserConfig {
-  const url: string = `https://polygon-${network}.g.alchemy.com/v2/${alchemyApiKey}`;
+  const url: string = `https://eth-${network}.g.alchemy.com/v2/${alchemyApiKey}`;
   return {
     accounts: {
       count: 2,
@@ -54,8 +56,16 @@ const config: HardhatUserConfig = {
   },
   defaultNetwork: "hardhat",
   networks: {
-    mumbai: createNetworkConfig("mumbai"),
     rinkeby: createNetworkConfig("rinkeby"),
+    bscTestnet: {
+      accounts: {
+        count: 2,
+        mnemonic,
+      },
+      url: "https://data-seed-prebsc-1-s1.binance.org:8545",
+      chainId: chainIds.bscTestnet,
+      gasPrice: 20000000000,
+    },
   },
   etherscan: {
     apiKey: {

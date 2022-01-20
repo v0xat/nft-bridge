@@ -2,6 +2,7 @@ import fs from "fs";
 import dotenv from "dotenv";
 import hre from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { Asset721__factory } from "../typechain-types";
 
 const network = hre.network.name;
 const envConfig = dotenv.parse(fs.readFileSync(`.env-${network}`));
@@ -18,19 +19,19 @@ async function main() {
     `Owner account balance: ${hre.ethers.utils.formatEther(balance).toString()}`
   );
 
-  const Token = await hre.ethers.getContractFactory(process.env.TOKEN_NAME as string);
-  const token = await Token.deploy(
-    process.env.TOKEN_NAME_FULL as string,
-    process.env.TOKEN_SYMBOL as string
+  const asset = await new Asset721__factory(owner).deploy(
+    process.env.NFT_NAME_FULL as string,
+    process.env.NFT_SYMBOL as string,
+    process.env.NFT_RANGE_UNIT as string
   );
+  await asset.deployed();
 
-  await token.deployed();
-  console.log(`Token deployed to ${token.address}`);
+  console.log(`Assets721 deployed to ${asset.address} on network ${network}`);
 
   // Sync env file
   fs.appendFileSync(
     `.env-${network}`,
-    `\r\# Deployed at \rTOKEN_ADDRESS=${token.address}\r`
+    `\r# Deployed at \rNFT_ADDRESS=${asset.address}\r`
   );
 }
 
