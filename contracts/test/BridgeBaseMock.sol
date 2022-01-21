@@ -6,15 +6,17 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../Asset721.sol";
 
-/** @dev Bridge.sol with constructor accepting chainId, so we can emulate different chains in tests. */
-contract BridgeMock is EIP712, IERC721Receiver {
+/** @title Swaps ERC721 items between EVM compatible networks. */
+contract BridgeBaseMock is EIP712, IERC721Receiver, Ownable, Pausable {
   /** Contracts chain id. */
   uint256 public immutable chainId;
 
-  /** Backend signer address for swap. */
+  /** Backend signer address. */
   address public gateway;
 
   /** NFT contract address. */
@@ -63,6 +65,10 @@ contract BridgeMock is EIP712, IERC721Receiver {
     address to
   );
 
+  event ChainAdded(uint256 indexed chainId, address indexed by);
+
+  event ChainRemoved(uint256 indexed chainId, address indexed by);
+
   mapping(uint256 => bool) public supportedChains;
 
   mapping(bytes32 => SwapRequest) public requests;
@@ -81,16 +87,22 @@ contract BridgeMock is EIP712, IERC721Receiver {
     chainId = _chainId;
   }
 
-  function addChain(uint256 id) external {
-    require(msg.sender == gateway, "Only gateway can add chain");
+  function addChain(uint256 id) external whenNotPaused onlyOwner {
     supportedChains[id] = true;
+    emit ChainAdded(id, msg.sender);
+  }
+
+  function removeChain(uint256 id) external whenNotPaused onlyOwner {
+    supportedChains[id] = false;
+    emit ChainRemoved(id, msg.sender);
   }
 
   function swap(uint256 id, address to, uint256 chainTo)
     external
+    whenNotPaused
   {
     require(supportedChains[chainTo], "Swap to an unsupported chain");
-    require(Asset721(asset).ownerOf(id) == msg.sender, "Caller is not owner");
+    require(Asset721(asset).ownerOf(id) == msg.sender, "Caller is not token owner");
     
     SwapRequest memory request = SwapRequest({
       itemId: id,
@@ -117,7 +129,10 @@ contract BridgeMock is EIP712, IERC721Receiver {
     string calldata uri,
     address to,
     uint256 chainFrom
-  ) external {
+  )
+    external
+    whenNotPaused
+  {
     require(msg.sender == gateway, "Only gateway can execute redeem");
     require(!redeemed[hash], "Can't redeem twice");
 
@@ -158,6 +173,21 @@ contract BridgeMock is EIP712, IERC721Receiver {
         req.status
       )
     );
+  }
+
+  /** @notice Pausing some functions of contract.
+    @dev Available only to admin.
+    Prevents calls to functions with `whenNotPaused` modifier.
+  */
+  function pause() external onlyOwner {
+    _pause();
+  }
+
+  /** @notice Unpausing functions of contract.
+    @dev Available only to admin.
+  */
+  function unpause() external onlyOwner {
+    _unpause();
   }
 
   /** Always returns `IERC721Receiver.onERC721Received.selector`. */
