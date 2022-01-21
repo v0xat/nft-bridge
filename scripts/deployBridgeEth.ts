@@ -53,7 +53,7 @@ const saveBackendFiles = (bridge: Contract) => {
   // Sync backend env file
   fs.appendFileSync(
     path.join(__dirname, "/../backend/.env"),
-    `\r# Deployed at \rBRIDGE_ADDRESS=${bridge.address}\r`
+    `\r# Deployed at \rBRIDGE_ETH_ADDRESS=${bridge.address}\r`
   );
 
   const Artifact = artifacts.readArtifactSync(process.env.BRIDGE_NAME as string);

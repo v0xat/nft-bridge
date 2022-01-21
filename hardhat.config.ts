@@ -56,6 +56,7 @@ const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   networks: {
     rinkeby: createNetworkConfig("rinkeby"),
+    kovan: createNetworkConfig("kovan"),
     bscTestnet: {
       accounts: {
         count: 2,
