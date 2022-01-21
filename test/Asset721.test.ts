@@ -1,11 +1,10 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
-import { Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { Asset721__factory, Asset721 } from "../types";
 
 import * as utils from "./utils";
 
-// NFT metadata
 const name = "Asset721";
 const symbol = "nft721";
 const uri = "https://gateway.pinata.cloud/ipfs/uri/1.json";
@@ -16,25 +15,23 @@ const itemId1 = chainId * rangeUnit;
 const itemId2 = chainId * rangeUnit + 1;
 
 describe("Asset721", function () {
-  let Asset721: ContractFactory,
+  let nft: Asset721,
     owner: SignerWithAddress,
     alice: SignerWithAddress,
     bob: SignerWithAddress,
-    nft: Contract,
     snapId: string;
 
   before(async () => {
     [owner, alice, bob] = await ethers.getSigners();
-    Asset721 = await ethers.getContractFactory(name);
 
-    nft = await Asset721.deploy(name, symbol, rangeUnit);
+    nft = await new Asset721__factory(owner).deploy(name, symbol, rangeUnit);
     await nft.deployed();
   });
 
   beforeEach(async () => {
     snapId = await utils.evmTakeSnap();
-    await nft.safeMint(owner.address, uri);
-    await nft.safeMint(alice.address, uri);
+    await nft["safeMint(address,string)"](owner.address, uri);
+    await nft["safeMint(address,string)"](alice.address, uri);
   });
 
   afterEach(async () => {
@@ -50,10 +47,6 @@ describe("Asset721", function () {
       expect(await nft.symbol()).to.be.equal(symbol);
     });
 
-    it("Has a chainId", async () => {
-      expect(await nft.chainId()).to.be.equal(chainId);
-    });
-
     it("Supports interface", async () => {
       expect(await nft.supportsInterface(utils.interfaceIds.erc721)).to.equal(true);
     });
@@ -61,27 +54,38 @@ describe("Asset721", function () {
 
   describe("AccessControl", function () {
     it("Only owner can mint items", async () => {
-      await expect(nft.connect(alice).safeMint(bob.address, uri)).to.be.revertedWith(
+      await expect(
+        nft.connect(alice)["safeMint(address,string)"](bob.address, uri)
+      ).to.be.revertedWith(
         `AccessControl: account ${alice.address.toLowerCase()} is missing role ${
-          utils.adminRole
+          utils.roles.minter
+        }`
+      );
+      await expect(
+        nft.connect(bob)["safeMint(uint256,address,string)"](1337, bob.address, uri)
+      ).to.be.revertedWith(
+        `AccessControl: account ${bob.address.toLowerCase()} is missing role ${
+          utils.roles.minter
         }`
       );
     });
 
-    it("Only bridge can mint items with id", async () => {
-      await expect(
-        nft.connect(bob).safeMintBridge(1337, 1337, bob.address, uri)
-      ).to.be.revertedWith(
+    it("Only owner can burn", async () => {
+      await expect(nft.connect(bob).burn(itemId1)).to.be.revertedWith(
         `AccessControl: account ${bob.address.toLowerCase()} is missing role ${
-          utils.bridgeRole
+          utils.roles.burner
         }`
       );
+
+      await expect(nft.burn(itemId1))
+        .to.emit(nft, "Transfer")
+        .withArgs(owner.address, utils.zeroAddr, itemId1);
     });
   });
 
-  describe("SafeMintBridge", function () {
-    it("Bridge can mint with id", async () => {
-      await expect(nft.safeMintBridge(1337, 1337, bob.address, uri))
+  describe("Mint", function () {
+    it("Can mint with id", async () => {
+      await expect(nft["safeMint(uint256,address,string)"](1337, bob.address, uri))
         .to.emit(nft, "Transfer")
         .withArgs(utils.zeroAddr, bob.address, 1337);
     });
