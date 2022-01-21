@@ -38,8 +38,8 @@ function createNetworkConfig(network: keyof typeof chainIds): NetworkUserConfig 
     },
     chainId: chainIds[network],
     url,
-    // gas: 2100000,
-    // gasPrice: 8000000000,
+    gas: 2100000,
+    gasPrice: 8000000000,
   };
 }
 
