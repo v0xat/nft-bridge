@@ -24,8 +24,8 @@ async function main() {
   const bridge = await new BridgeEth__factory(owner).deploy(
     process.env.BRIDGE_NAME as string,
     process.env.BRIDGE_VERSION as string,
-    process.env.NFT_ADDRESS as string,
-    process.env.BRIDGE_GATEWAY as string
+    process.env.BRIDGE_GATEWAY as string,
+    process.env.NFT_ADDRESS as string
   );
   await bridge.deployed();
 
