@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import hre, { artifacts } from "hardhat";
 import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Bridge__factory } from "../typechain-types";
+import { BridgeBase__factory } from "../types";
 
 const network = hre.network.name;
 const envConfig = dotenv.parse(fs.readFileSync(`.env-${network}`));
@@ -21,7 +21,7 @@ async function main() {
     `Owner account balance: ${hre.ethers.utils.formatEther(balance).toString()}`
   );
 
-  const bridge = await new Bridge__factory(owner).deploy(
+  const bridge = await new BridgeBase__factory(owner).deploy(
     process.env.BRIDGE_NAME as string,
     process.env.BRIDGE_VERSION as string,
     process.env.NFT_ADDRESS as string,
@@ -29,12 +29,12 @@ async function main() {
   );
   await bridge.deployed();
 
-  console.log(`Bridge deployed to ${bridge.address} on network ${network}`);
+  console.log(`BridgeBase deployed to ${bridge.address} on network ${network}`);
 
   // Sync env file
   fs.appendFileSync(
     `.env-${network}`,
-    `\r# Deployed at \rBRIDGE_ADDRESS=${bridge.address}\r`
+    `\r# Deployed at \rBRIDGE_BASE_ADDRESS=${bridge.address}\r`
   );
 
   // Saving artifacts and address in /backend
@@ -51,7 +51,7 @@ const saveBackendFiles = (bridge: Contract) => {
   // Sync backend env file
   fs.appendFileSync(
     path.join(__dirname, "/../backend/.env"),
-    `\r# Deployed at \rBRIDGE_ADDRESS=${bridge.address}\r`
+    `\r# Deployed at \rBRIDGE_BASE_ADDRESS=${bridge.address}\r`
   );
 
   const Artifact = artifacts.readArtifactSync(process.env.BRIDGE_NAME as string);

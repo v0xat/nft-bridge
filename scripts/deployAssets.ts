@@ -2,7 +2,7 @@ import fs from "fs";
 import dotenv from "dotenv";
 import hre from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Asset721__factory } from "../typechain-types";
+import { Asset721__factory } from "../types";
 
 const network = hre.network.name;
 const envConfig = dotenv.parse(fs.readFileSync(`.env-${network}`));
