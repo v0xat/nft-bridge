@@ -19,8 +19,6 @@ task("swap", "Swaps NFT between networks")
       taskArgs.bridge || (process.env.BRIDGE_ADDRESS as string)
     );
 
-    console.log(taskArgs);
-
     console.log(`Swapping item #${taskArgs.id} to chain id ${taskArgs.chain} ...`);
     await bridge.swap(taskArgs.id, taskArgs.to, taskArgs.chain);
     console.log(`Done!`);

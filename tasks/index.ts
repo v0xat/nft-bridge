@@ -1,5 +1,6 @@
 import "./accounts.ts";
 import "./balanceOf.ts";
+import "./assets/approve.ts";
 import "./assets/createItem.ts";
 import "./bridge/addChain.ts";
 import "./bridge/removeChain.ts";
