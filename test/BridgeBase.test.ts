@@ -2,10 +2,10 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import {
+  BridgeBaseMock__factory,
+  BridgeBaseMock,
   Asset721Mock__factory,
   Asset721Mock,
-  BridgeMock__factory,
-  BridgeMock,
 } from "../types";
 
 import * as utils from "./utils";
@@ -47,8 +47,8 @@ const signHash = async (signer: SignerWithAddress, bytes: Uint8Array) => {
 describe("Bridge", function () {
   let mainNFT: Asset721Mock,
     sideNFT: Asset721Mock,
-    mainBridge: BridgeMock,
-    sideBridge: BridgeMock,
+    mainBridge: BridgeBaseMock,
+    sideBridge: BridgeBaseMock,
     owner: SignerWithAddress,
     alice: SignerWithAddress,
     bob: SignerWithAddress,
@@ -79,7 +79,7 @@ describe("Bridge", function () {
     await sideNFT.deployed();
 
     // Deploy two bridges with different chainIds
-    mainBridge = await new BridgeMock__factory(owner).deploy(
+    mainBridge = await new BridgeBaseMock__factory(owner).deploy(
       name,
       version,
       gateway.address,
@@ -88,7 +88,7 @@ describe("Bridge", function () {
     );
     await mainBridge.deployed();
 
-    sideBridge = await new BridgeMock__factory(owner).deploy(
+    sideBridge = await new BridgeBaseMock__factory(owner).deploy(
       name,
       version,
       gateway.address,
@@ -109,8 +109,8 @@ describe("Bridge", function () {
     await sideNFT.safeMint(alice.address, uri);
 
     // Updating chain support
-    await mainBridge.connect(gateway).addChain(secondChain.chainId);
-    await sideBridge.connect(gateway).addChain(firstChain.chainId);
+    await mainBridge.addChain(secondChain.chainId);
+    await sideBridge.addChain(firstChain.chainId);
 
     // Approve item
     await mainNFT.approve(mainBridge.address, firstChain.itemId1);
@@ -126,13 +126,15 @@ describe("Bridge", function () {
 
   describe("Deployment", function () {
     it("Should deploy main bridge with correct params", async () => {
+      expect(await mainBridge.owner()).to.equal(owner.address);
       expect(await mainBridge.asset()).to.equal(mainNFT.address);
       expect(await mainBridge.gateway()).to.equal(gateway.address);
     });
 
     it("Should deploy side bridge with correct params", async () => {
-      expect(await mainBridge.asset()).to.equal(mainNFT.address);
-      expect(await mainBridge.gateway()).to.equal(gateway.address);
+      expect(await sideBridge.owner()).to.equal(owner.address);
+      expect(await sideBridge.asset()).to.equal(sideNFT.address);
+      expect(await sideBridge.gateway()).to.equal(gateway.address);
     });
 
     it("Should deploy main nft with correct params", async () => {
@@ -155,13 +157,47 @@ describe("Bridge", function () {
     });
   });
 
-  describe("Bridge", function () {
-    it("Only gateway can add new chains", async () => {
-      await expect(mainBridge.addChain(42)).to.be.revertedWith(
-        "Only gateway can add chain"
-      );
+  describe("Pausable", function () {
+    it("Should be able to pause & unpause contract", async () => {
+      await mainBridge.pause();
+      await expect(
+        mainBridge.swap(firstChain.itemId1, alice.address, secondChain.chainId)
+      ).to.be.revertedWith("Pausable: paused");
+      await mainBridge.unpause();
+      await mainBridge.swap(firstChain.itemId1, alice.address, secondChain.chainId);
     });
 
+    it("Only admin should be able to pause contract", async () => {
+      await expect(mainBridge.connect(alice).pause()).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+  });
+
+  describe("Supported chains", function () {
+    it("Chain adding emits event", async () => {
+      await expect(mainBridge.addChain(1337))
+        .to.emit(mainBridge, "ChainAdded")
+        .withArgs(1337, owner.address);
+    });
+
+    it("Chain removing emits event", async () => {
+      await expect(mainBridge.removeChain(secondChain.chainId))
+        .to.emit(mainBridge, "ChainRemoved")
+        .withArgs(secondChain.chainId, owner.address);
+    });
+
+    it("Only owner can add / remove supported chains", async () => {
+      await expect(mainBridge.connect(alice).addChain(1337)).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
+      await expect(mainBridge.connect(bob).removeChain(2)).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+  });
+
+  describe("Bridge", function () {
     describe("Swap", function () {
       it("Calling swap emits event", async () => {
         await expect(
@@ -189,7 +225,7 @@ describe("Bridge", function () {
       it("Can swap only own tokens", async () => {
         await expect(
           mainBridge.swap(firstChain.itemId2, alice.address, secondChain.chainId)
-        ).to.be.revertedWith("Caller is not owner");
+        ).to.be.revertedWith("Caller is not token owner");
       });
     });
 
