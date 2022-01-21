@@ -8,7 +8,7 @@ contract BridgeBsc is BridgeBase {
   constructor(
     string memory name,
     string memory version,
-    address _gateway,
+    address _validator,
     address _asset
-  ) BridgeBase(name, version, _gateway, _asset) {}
+  ) BridgeBase(name, version, _validator, _asset) {}
 }
