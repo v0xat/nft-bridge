@@ -36,7 +36,7 @@ async function main() {
   // Sync env file
   fs.appendFileSync(
     `.env-${network}`,
-    `\r# Deployed at \rBRIDGE_BSC_ADDRESS=${bridge.address}\r`
+    `\r# Deployed at \rBRIDGE_ADDRESS=${bridge.address}\r`
   );
 
   // Saving artifacts and address in /backend
