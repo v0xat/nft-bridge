@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 
 import "./BridgeBase.sol";
 
-contract BridgeBsc is BridgeBase {
+contract BridgeEth is BridgeBase {
   constructor(
     string memory name,
     string memory version,
