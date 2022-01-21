@@ -2,8 +2,8 @@ import "dotenv/config";
 import express, { Application, Request, Response } from "express";
 import { ethers } from "ethers";
 
-import MainBridgeArtifact from "./contracts/MainBridge.json";
-import SideBridgeArtifact from "./contracts/SideBridge.json";
+import EthBridgeArtifact from "./contracts/BridgeEth.json";
+import BscBridgeArtifact from "./contracts/BridgeBsc.json";
 
 const chainIds = {
   rinkeby: 4,
@@ -15,109 +15,125 @@ const chainIds = {
 const app: Application = express();
 const port = 3000;
 
-// Alchemy Rinkeby provider
-const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545/");
+const ethProvider = new ethers.providers.AlchemyProvider(
+  "kovan",
+  process.env.ALCHEMY_API_KEY
+);
 
-// Signer
-const wallet = new ethers.Wallet(`0x${process.env.PRIVATE_KEY}`, provider);
-const signer = wallet.connect(provider);
+const bscProvider = new ethers.providers.JsonRpcProvider(
+  "https://data-seed-prebsc-1-s1.binance.org:8545/"
+);
+
+// Signers
+const ethWallet = new ethers.Wallet(`0x${process.env.PRIVATE_KEY}`, ethProvider);
+const ethSigner = ethWallet.connect(ethProvider);
+
+const bscWallet = new ethers.Wallet(`0x${process.env.PRIVATE_KEY}`, bscProvider);
+const bscSigner = bscWallet.connect(bscProvider);
 
 // Bridges
-const mainBridge = new ethers.Contract(
-  process.env.MAIN_BRIDGE_ADDRESS,
-  MainBridgeArtifact.abi,
-  signer
+const ethBridge = new ethers.Contract(
+  process.env.BRIDGE_ETH_ADDRESS,
+  EthBridgeArtifact.abi,
+  ethSigner
 );
 
-const sideBridge = new ethers.Contract(
-  process.env.SIDE_BRIDGE_ADDRESS,
-  SideBridgeArtifact.abi,
-  signer
+const bscBridge = new ethers.Contract(
+  process.env.BRIDGE_BSC_ADDRESS,
+  BscBridgeArtifact.abi,
+  bscSigner
 );
 
-// Listening blocks
-// provider.on("block", (blockNumber) => {
-//   console.log(blockNumber);
-// });
-// const getBlock = async (blockNumber) => {
-//   const block = await provider.getBlock(blockNumber);
-//   console.log(block);
-// };
-
-console.log(`signer:  ${signer.address}`);
-console.log(`mainBridge:  ${mainBridge.address}`);
-console.log(`sideBridge:  ${sideBridge.address}`);
+console.log(`ethSigner:  ${ethSigner.address}`);
+console.log(`ethBridge:  ${ethBridge.address}`);
+console.log("#################");
+console.log(`bscSigner:  ${bscSigner.address}`);
+console.log(`bscBridge:  ${bscBridge.address}`);
 
 // Listening to SwapInitialized events
-mainBridge.on(
+ethBridge.on(
   "SwapInitialized",
-  async (swapId, item, tokenId, swapper, _chainFrom, _chainTo, to, event) => {
-    const hashToSign = swapId;
+  async (itemId, chainTo, chainFrom, swapper, to, uri, event) => {
+    const hashToSign = event.transactionHash;
 
+    console.log("\n###########\n");
     console.log(`Swap initialized, txHash:  ${event.transactionHash}`);
-    console.log(`hashToSign:  ${hashToSign}`);
-    console.log(`itemContract:  ${item}`);
-    console.log(`tokenId:  ${tokenId}`);
+    console.log(`tokenId:  ${itemId}`);
+    console.log(`chainTo:  ${chainTo}`);
+    console.log(`chainFrom:  ${chainFrom}`);
     console.log(`swapper:  ${swapper}`);
-    console.log(`_chainFrom:  ${_chainFrom}`);
-    console.log(`_chainTo:  ${_chainTo}`);
     console.log(`to:  ${to}`);
+    console.log(`uri:  ${uri}`);
 
     const testBytes = ethers.utils.arrayify(hashToSign);
     const messageHash = ethers.utils.hashMessage(testBytes);
 
-    const signature = await signer.signMessage(testBytes);
+    const signature = await ethSigner.signMessage(testBytes);
     const recovered = ethers.utils.verifyMessage(testBytes, signature);
 
-    console.log("Recovered:", recovered);
+    console.log("\nRecovered: ", recovered);
     const splitSig = ethers.utils.splitSignature(signature);
 
-    await sideBridge.redeem(messageHash, splitSig);
+    console.log("Signer Balance: ", await bscSigner.getBalance());
 
-    // Emitted when the transaction has been mined
-    // provider.once(event.transactionHash, async () => {
+    await bscBridge.redeem(messageHash, splitSig, itemId, uri, to, chainFrom);
 
-    // });
-  }
-);
-
-sideBridge.on("SwapRedeemed", async (hash, event) => {
-  console.log(`Swap Redeemd, txHash:  ${event.transactionHash}`);
-  console.log(`hash:  ${hash}`);
-});
-
-sideBridge.on(
-  "SwapInitialized",
-  async (swapId, item, tokenId, swapper, _chainFrom, _chainTo, to, event) => {
-    const hashToSign = swapId;
-
-    console.log(`Swap initialized, txHash:  ${event.transactionHash}`);
-    console.log(`hashToSign:  ${hashToSign}`);
-    console.log(`itemContract:  ${item}`);
-    console.log(`tokenId:  ${tokenId}`);
-    console.log(`swapper:  ${swapper}`);
-    console.log(`_chainFrom:  ${_chainFrom}`);
-    console.log(`_chainTo:  ${_chainTo}`);
-    console.log(`to:  ${to}`);
-
-    const testBytes = ethers.utils.arrayify(hashToSign);
-    const messageHash = ethers.utils.hashMessage(testBytes);
-
-    const signature = await signer.signMessage(testBytes);
-    const recovered = ethers.utils.verifyMessage(testBytes, signature);
-
-    console.log("Recovered:", recovered);
-    const splitSig = ethers.utils.splitSignature(signature);
-
-    await mainBridge.redeem(messageHash, splitSig);
+    console.log("\nWaiting for redeem event...");
 
     // Emitted when the transaction has been mined
     // provider.once(event.transactionHash, async () => {});
   }
 );
 
-// TODO
-// get swap status by id
+bscBridge.on(
+  "SwapInitialized",
+  async (itemId, chainTo, chainFrom, swapper, to, uri, event) => {
+    const hashToSign = event.transactionHash;
+
+    console.log("\n###########\n");
+    console.log(`Swap initialized, txHash:  ${event.transactionHash}`);
+    console.log(`tokenId:  ${itemId}`);
+    console.log(`chainTo:  ${chainTo}`);
+    console.log(`chainFrom:  ${chainFrom}`);
+    console.log(`swapper:  ${swapper}`);
+    console.log(`to:  ${to}`);
+    console.log(`uri:  ${uri}`);
+
+    const testBytes = ethers.utils.arrayify(hashToSign);
+    const messageHash = ethers.utils.hashMessage(testBytes);
+
+    const signature = await bscSigner.signMessage(testBytes);
+    const recovered = ethers.utils.verifyMessage(testBytes, signature);
+
+    console.log("Recovered: ", recovered);
+    const splitSig = ethers.utils.splitSignature(signature);
+
+    console.log("Balance: ", await ethSigner.getBalance());
+
+    await ethBridge.redeem(messageHash, splitSig, itemId, uri, to, chainFrom);
+
+    console.log("\nWaiting for redeem event...");
+  }
+);
+
+ethBridge.on("SwapRedeemed", async (hash, itemId, chainFrom, to, event) => {
+  console.log("\n###########\n");
+  console.log(`Swap Redeemd, txHash:  ${event.transactionHash}`);
+  console.log(`hash:  ${hash}`);
+  console.log(`itemId:  ${itemId}`);
+  console.log(`chainFrom:  ${chainFrom}`);
+  console.log(`to:  ${to}`);
+});
+
+bscBridge.on("SwapRedeemed", async (hash, itemId, chainFrom, to, event) => {
+  console.log("\n###########\n");
+  console.log(`Swap Redeemd, txHash:  ${event.transactionHash}`);
+  console.log(`hash:  ${hash}`);
+  console.log(`itemId:  ${itemId}`);
+  console.log(`chainFrom:  ${chainFrom}`);
+  console.log(`to:  ${to}`);
+});
+
 app.get(
   "/swap/status",
   async (req: Request, res: Response): Promise<Response> =>
