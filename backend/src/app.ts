@@ -68,20 +68,19 @@ ethBridge.on(
     const testBytes = ethers.utils.arrayify(hashToSign);
     const messageHash = ethers.utils.hashMessage(testBytes);
 
-    const signature = await ethSigner.signMessage(testBytes);
+    const signature = await bscSigner.signMessage(testBytes);
     const recovered = ethers.utils.verifyMessage(testBytes, signature);
 
     console.log("\nRecovered: ", recovered);
-    const splitSig = ethers.utils.splitSignature(signature);
+    const sig = ethers.utils.splitSignature(signature);
 
-    console.log("Signer Balance: ", await bscSigner.getBalance());
+    console.log("\nSigner balance: ", await bscSigner.getBalance());
 
-    await bscBridge.redeem(messageHash, splitSig, itemId, uri, to, chainFrom);
+    await bscBridge.redeem(messageHash, sig, itemId, uri, to, chainFrom, {
+      gasLimit: 9000000,
+    });
 
     console.log("\nWaiting for redeem event...");
-
-    // Emitted when the transaction has been mined
-    // provider.once(event.transactionHash, async () => {});
   }
 );
 
@@ -102,15 +101,17 @@ bscBridge.on(
     const testBytes = ethers.utils.arrayify(hashToSign);
     const messageHash = ethers.utils.hashMessage(testBytes);
 
-    const signature = await bscSigner.signMessage(testBytes);
+    const signature = await ethSigner.signMessage(testBytes);
     const recovered = ethers.utils.verifyMessage(testBytes, signature);
 
-    console.log("Recovered: ", recovered);
+    console.log("\nRecovered: ", recovered);
     const splitSig = ethers.utils.splitSignature(signature);
 
-    console.log("Balance: ", await ethSigner.getBalance());
+    console.log("\nSigner Balance: ", await ethSigner.getBalance());
 
-    await ethBridge.redeem(messageHash, splitSig, itemId, uri, to, chainFrom);
+    await ethBridge.redeem(messageHash, splitSig, itemId, uri, to, chainFrom, {
+      gasLimit: 9000000,
+    });
 
     console.log("\nWaiting for redeem event...");
   }
