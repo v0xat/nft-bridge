@@ -77,9 +77,6 @@ const config: HardhatUserConfig = {
       // binance smart chain
       bsc: process.env.BSCSCAN_API_KEY,
       bscTestnet: process.env.BSCSCAN_API_KEY,
-      // polygon
-      polygon: process.env.POLYGONSCAN_API_KEY,
-      polygonMumbai: process.env.POLYGONSCAN_API_KEY,
     },
   },
   paths: {
