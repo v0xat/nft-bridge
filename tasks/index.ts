@@ -2,6 +2,7 @@ import "./accounts.ts";
 import "./balanceOf.ts";
 import "./assets/approve.ts";
 import "./assets/createItem.ts";
+import "./assets/grantRole.ts";
 import "./bridge/addChain.ts";
 import "./bridge/removeChain.ts";
 import "./bridge/swap.ts";

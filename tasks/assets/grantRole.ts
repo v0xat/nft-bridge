@@ -1,10 +1,13 @@
 import fs from "fs";
-import { task, types } from "hardhat/config";
 import dotenv from "dotenv";
+import { task } from "hardhat/config";
 
-task("approve", "Approves item to address")
-  .addParam("id", "Token id", 1, types.int)
-  .addParam("to", "The address to approve to")
+const minter = "0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6";
+const burner = "0x51f4231475d91734c657e212cfb2e9728a863d53c9057d6ce6ca203d6e5cfd5d";
+
+task("grantRole", "Grants role to account")
+  .addParam("role", "Available roles: 'minter', 'burner'. Minter by default", minter)
+  .addParam("to", "Address to grant role to")
   .addOptionalParam("asset", "The adddress of the Asset. By default grab it from .env")
   .setAction(async (taskArgs, hre) => {
     const network = hre.network.name;
@@ -18,7 +21,8 @@ task("approve", "Approves item to address")
       taskArgs.asset || (process.env.NFT_ADDRESS as string)
     );
 
-    console.log(`Approving item to ${taskArgs.to} ...`);
-    await asset.approve(taskArgs.to, taskArgs.id);
+    const role = taskArgs.role === "burner" ? burner : minter;
+    console.log(`\nGranting role to ${taskArgs.to}...\n`);
+    await asset.grantRole(role, taskArgs.to);
     console.log(`Tx sent!`);
   });
