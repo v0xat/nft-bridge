@@ -38,8 +38,8 @@ function createNetworkConfig(network: keyof typeof chainIds): NetworkUserConfig 
     },
     chainId: chainIds[network],
     url,
-    gas: 2100000,
-    gasPrice: 8000000000,
+    // gas: 2100000,
+    // gasPrice: 8000000000,
   };
 }
 
@@ -59,12 +59,12 @@ const config: HardhatUserConfig = {
     kovan: createNetworkConfig("kovan"),
     bscTestnet: {
       accounts: {
-        count: 2,
+        count: 10,
         mnemonic,
       },
       url: "https://data-seed-prebsc-1-s1.binance.org:8545",
       chainId: chainIds.bscTestnet,
-      gasPrice: 20000000000,
+      // gasPrice: 20000000000,
     },
   },
   etherscan: {
