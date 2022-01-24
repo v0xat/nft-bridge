@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.10;
 
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -29,6 +28,7 @@ contract BridgeBase is EIP712, IERC721Receiver, Ownable, Pausable {
     bytes32 s;
   }
 
+  /** Emitted when a new swap is initialized. */
   event SwapInitialized(
     uint256 indexed itemId,
     uint256 indexed chainTo,
@@ -38,6 +38,7 @@ contract BridgeBase is EIP712, IERC721Receiver, Ownable, Pausable {
     string uri
   );
 
+  /** Emitted when a swap is redeemed. */
   event SwapRedeemed(
     bytes32 indexed hash,
     uint256 indexed itemId,
@@ -45,14 +46,24 @@ contract BridgeBase is EIP712, IERC721Receiver, Ownable, Pausable {
     address to
   );
 
+  /** Emitted when a new chainId is added. */
   event ChainAdded(uint256 indexed chainId, address indexed by);
 
+  /** Emitted when a chainId is removed. */
   event ChainRemoved(uint256 indexed chainId, address indexed by);
 
+  /** Supported chains by id. */
   mapping(uint256 => bool) public supportedChains;
-  
+
+  /** Redeemed swaps by hash. */
   mapping(bytes32 => bool) public redeemed;
 
+  /** @notice Creates a new BridgeBase contract.
+   * @param name Name of the bridge.
+   * @param version Versio of the bridge.
+   * @param _validator Address of the validator (backend).
+   * @param _asset Address of the collection.
+   */
   constructor(
     string memory name,
     string memory version,
@@ -63,16 +74,27 @@ contract BridgeBase is EIP712, IERC721Receiver, Ownable, Pausable {
     asset = _asset;
   }
 
+  /** @notice Adds new `id` to supported chains.
+   * @param id Chain ID.
+   */
   function addChain(uint256 id) external whenNotPaused onlyOwner {
     supportedChains[id] = true;
     emit ChainAdded(id, msg.sender);
   }
 
+  /** @notice Removes `id` from supported chains.
+   * @param id Chain ID.
+   */
   function removeChain(uint256 id) external whenNotPaused onlyOwner {
     supportedChains[id] = false;
     emit ChainRemoved(id, msg.sender);
   }
 
+  /** @notice Initializes a swap of the item `id`.
+   * @param id Item ID.
+   * @param to Address to swap to in new chain.
+   * @param chainTo Chain ID to swap to.
+   */
   function swap(uint256 id, address to, uint256 chainTo)
     external
     whenNotPaused
@@ -85,6 +107,15 @@ contract BridgeBase is EIP712, IERC721Receiver, Ownable, Pausable {
     emit SwapInitialized(id, chainTo, block.chainid, msg.sender, to, Asset721(asset).tokenURI(id));
   }
 
+  /** @notice Transfers or mints item `id` to address `to`.
+   * @dev Must be signed and called by validator.
+   * @param hash Swap hash.
+   * @param sig An ECDSA signature.
+   * @param id Item ID.
+   * @param uri Item URI.
+   * @param to Address to transfer item to.
+   * @param chainFrom Id of the chain which called swap.
+   */
   function redeem(
     bytes32 hash,
     Sig memory sig,

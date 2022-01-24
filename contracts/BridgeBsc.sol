@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 
 import "./BridgeBase.sol";
 
+/** @notice This contract is just to simplify the deployment process. */
 contract BridgeBsc is BridgeBase {
   constructor(
     string memory name,

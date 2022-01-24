@@ -1,5 +1,9 @@
 # NFT Bridge
-*This is a training project, you should not use any of it's code in production because it's not properly audited and tested.*
+
+*This is a training project, you should not use any of it's code in production 
+because it's not properly audited and tested.*
+
+### Description
 
 This project implements an NFT bridge between EVM compatible networks.
 Main idea of this bridge is to preallocate item ids for each network, so we can mint items on 
