@@ -106,8 +106,18 @@ contract BridgeBaseMock is EIP712, IERC721Receiver, Ownable, Pausable {
     address signer = ECDSA.recover(hash, sig.v, sig.r, sig.s);
     require(signer == validator, "ECDSA: invalid signature");
 
-    (Asset721(asset).exists(id)) ? Asset721(asset).safeTransferFrom(address(this), to, id)
-    : Asset721(asset).safeMint(id, to, uri);
+    if (!Asset721(asset).exists(id)) {
+      Asset721(asset).safeMint(id, to, uri);
+    } else if (Asset721(asset).accountOwnsToken(address(this), id)) {
+      Asset721(asset).safeTransferFrom(address(this), to, id);
+    } else {
+      revert("Item ID already in this chain");
+    }
+
+    // Old version (without enumerable)
+    // (Asset721(asset).exists(id))
+    // ? Asset721(asset).safeTransferFrom(address(this), to, id)
+    // : Asset721(asset).safeMint(id, to, uri);
 
     redeemed[hash] = true;
 

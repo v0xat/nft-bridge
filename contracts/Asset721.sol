@@ -3,10 +3,11 @@
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /** ERC721 item creation contract. */
-contract Asset721 is ERC721URIStorage, AccessControl {
+contract Asset721 is ERC721Enumerable, ERC721URIStorage, AccessControl {
   /** Role identifier for minter. */
   bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
@@ -71,21 +72,50 @@ contract Asset721 is ERC721URIStorage, AccessControl {
   }
 
   /** @notice Burns item `id`.
-   * @param id The id of the item.
+   * @param id Item ID.
    */
   function burn(uint256 id) external onlyRole(BURNER_ROLE) {
     _burn(id);
   }
 
   /** @notice Checks if `tokenId` exists.
-   * @param tokenId The id of the item.
+   * @param tokenId Item ID.
    */
   function exists(uint256 tokenId) external view returns(bool) {
     return _exists(tokenId);
   }
 
-  /** Override required by solidity. */
-  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, AccessControl) returns (bool) {
+  /** @notice Checks if `account` owns a specific item.
+   * @param account The address of the user.
+   * @param tokenId Item ID.
+   */
+  function accountOwnsToken(address account, uint256 tokenId) external view returns(bool) {
+    uint256 accountBalance = balanceOf(account);
+    for (uint i = 0; i < accountBalance; i++) {
+      if (tokenOfOwnerByIndex(account, i) == tokenId) return true;
+    }
+    return false;
+  }
+
+
+  /** Below are the override required by solidity. */
+
+  function _beforeTokenTransfer(address from, address to, uint256 tokenId)
+    internal
+    override(ERC721, ERC721Enumerable)
+  {
+    super._beforeTokenTransfer(from, to, tokenId);
+  }
+
+  function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
+    super._burn(tokenId);
+  }
+
+  function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
+    return super.tokenURI(tokenId);
+  }
+
+  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721Enumerable, AccessControl) returns (bool) {
     return super.supportsInterface(interfaceId);
   }
 }

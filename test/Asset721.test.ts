@@ -174,6 +174,11 @@ describe("Asset721", function () {
       expect(await nft.exists(1337)).to.be.equal(false);
     });
 
+    it("Can check user owns item id", async () => {
+      expect(await nft.accountOwnsToken(owner.address, itemId1)).to.be.equal(true);
+      expect(await nft.accountOwnsToken(owner.address, itemId2)).to.be.equal(false);
+    });
+
     it("Can get tokenURI by id", async () => {
       expect(await nft.tokenURI(itemId1)).to.be.equal(uri);
     });
