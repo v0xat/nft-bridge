@@ -3,7 +3,6 @@
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
@@ -11,7 +10,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "./Asset721.sol";
 
 /** @title Swaps ERC721 items between EVM compatible networks. */
-contract BridgeBase is EIP712, IERC721Receiver, Ownable, Pausable {
+contract BridgeBase is IERC721Receiver, Ownable, Pausable {
   /** Backend signer address. */
   address public validator;
 
@@ -59,17 +58,10 @@ contract BridgeBase is EIP712, IERC721Receiver, Ownable, Pausable {
   mapping(bytes32 => bool) public redeemed;
 
   /** @notice Creates a new BridgeBase contract.
-   * @param name Name of the bridge.
-   * @param version Versio of the bridge.
    * @param _validator Address of the validator (backend).
    * @param _asset Address of the collection.
    */
-  constructor(
-    string memory name,
-    string memory version,
-    address _validator,
-    address _asset
-  ) EIP712(name, version) {
+  constructor(address _validator, address _asset) {
     validator = _validator;
     asset = _asset;
   }

@@ -82,8 +82,6 @@ describe("Bridge", function () {
 
     // Deploy two bridges with different chainIds
     mainBridge = await new BridgeEthMock__factory(owner).deploy(
-      name,
-      version,
       gateway.address,
       mainNFT.address,
       firstChain.chainId
@@ -91,8 +89,6 @@ describe("Bridge", function () {
     await mainBridge.deployed();
 
     sideBridge = await new BridgeBscMock__factory(owner).deploy(
-      name,
-      version,
       gateway.address,
       sideNFT.address,
       secondChain.chainId

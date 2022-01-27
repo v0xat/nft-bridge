@@ -4,14 +4,13 @@ pragma solidity ^0.8.10;
 
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../Asset721.sol";
 
-contract BridgeBaseMock is EIP712, IERC721Receiver, Ownable, Pausable {
+contract BridgeBaseMock is IERC721Receiver, Ownable, Pausable {
   /** Contracts chain id. */
   uint256 public immutable chainId;
 
@@ -56,12 +55,10 @@ contract BridgeBaseMock is EIP712, IERC721Receiver, Ownable, Pausable {
   mapping(bytes32 => bool) public redeemed;
 
   constructor(
-    string memory name,
-    string memory version,
     address _validator,
     address _asset,
     uint256 _chainId
-  ) EIP712(name, version) {
+  ) {
     validator = _validator;
     asset = _asset;
     chainId = _chainId;
