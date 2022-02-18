@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-/** ERC721 item creation contract. */
+/// @title ERC721 item creation contract.
 contract Asset721 is ERC721Enumerable, ERC721URIStorage, AccessControl {
   /** Role identifier for minter. */
   bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");

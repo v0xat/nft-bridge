@@ -4,7 +4,8 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import {
   BridgeEthMock__factory,
   BridgeBscMock__factory,
-  BridgeBaseMock,
+  BridgeEthMock,
+  BridgeBscMock,
   Asset721Mock__factory,
   Asset721Mock,
 } from "../types";
@@ -49,8 +50,8 @@ const signHash = async (signer: SignerWithAddress, bytes: Uint8Array) => {
 describe("Bridge", function () {
   let mainNFT: Asset721Mock,
     sideNFT: Asset721Mock,
-    mainBridge: BridgeBaseMock,
-    sideBridge: BridgeBaseMock,
+    mainBridge: BridgeEthMock,
+    sideBridge: BridgeBscMock,
     owner: SignerWithAddress,
     alice: SignerWithAddress,
     bob: SignerWithAddress,

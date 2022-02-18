@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
+pragma solidity ^0.8.12;
 
-pragma solidity ^0.8.10;
-
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -10,6 +8,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "../Asset721.sol";
 
+/// @title Swaps ERC721 items between EVM compatible networks.
 contract BridgeBaseMock is IERC721Receiver, Ownable, Pausable {
   /** Contracts chain id. */
   uint256 public immutable chainId;
