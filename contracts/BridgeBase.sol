@@ -10,23 +10,23 @@ import "./Asset721.sol";
 
 /// @title Swaps ERC721 items between EVM compatible networks.
 contract BridgeBase is IERC721Receiver, Ownable, Pausable {
-  /** Backend signer address. */
+  /// Backend signer address.
   address public validator;
 
-  /** NFT contract address. */
+  /// NFT contract address.
   address public asset;
 
-  /* An ECDSA signature. */ 
+  /// An ECDSA signature. 
   struct Sig {
-    /* v parameter */
+    /// v parameter
     uint8 v;
-    /* r parameter */
+    /// r parameter
     bytes32 r;
-    /* s parameter */
+    /// s parameter
     bytes32 s;
   }
 
-  /** Emitted when a new swap is initialized. */
+  /// Emitted when a new swap is initialized.
   event SwapInitialized(
     uint256 indexed itemId,
     uint256 indexed chainTo,
@@ -36,7 +36,7 @@ contract BridgeBase is IERC721Receiver, Ownable, Pausable {
     string uri
   );
 
-  /** Emitted when a swap is redeemed. */
+  /// Emitted when a swap is redeemed.
   event SwapRedeemed(
     bytes32 indexed hash,
     uint256 indexed itemId,
@@ -44,48 +44,44 @@ contract BridgeBase is IERC721Receiver, Ownable, Pausable {
     address to
   );
 
-  /** Emitted when a new chainId is added. */
+  /// Emitted when a new chainId is added.
   event ChainAdded(uint256 indexed chainId, address indexed by);
 
-  /** Emitted when a chainId is removed. */
+  /// Emitted when a chainId is removed.
   event ChainRemoved(uint256 indexed chainId, address indexed by);
 
-  /** Supported chains by id. */
+  /// Supported chains by id.
   mapping(uint256 => bool) public supportedChains;
 
-  /** Redeemed swaps by hash. */
+  /// Redeemed swaps by hash.
   mapping(bytes32 => bool) public redeemed;
 
-  /** @notice Creates a new BridgeBase contract.
-   * @param _validator Address of the validator (backend).
-   * @param _asset Address of the collection.
-   */
+  /// @notice Creates a new BridgeBase contract.
+  /// @param _validator Address of the validator (backend).
+  /// @param _asset Address of the collection.
   constructor(address _validator, address _asset) {
     validator = _validator;
     asset = _asset;
   }
 
-  /** @notice Adds new `id` to supported chains.
-   * @param id Chain ID.
-   */
+  /// @notice Adds new `id` to supported chains.
+  /// @param id Chain ID.
   function addChain(uint256 id) external whenNotPaused onlyOwner {
     supportedChains[id] = true;
     emit ChainAdded(id, msg.sender);
   }
 
-  /** @notice Removes `id` from supported chains.
-   * @param id Chain ID.
-   */
+  /// @notice Removes `id` from supported chains.
+  /// @param id Chain ID.
   function removeChain(uint256 id) external whenNotPaused onlyOwner {
     supportedChains[id] = false;
     emit ChainRemoved(id, msg.sender);
   }
 
-  /** @notice Initializes a swap of the item `id`.
-   * @param id Item ID.
-   * @param to Address to swap to in new chain.
-   * @param chainTo Chain ID to swap to.
-   */
+  /// @notice Initializes a swap of the item `id`.
+  /// @param id Item ID.
+  /// @param to Address to swap to in new chain.
+  /// @param chainTo Chain ID to swap to.
   function swap(uint256 id, address to, uint256 chainTo)
     external
     whenNotPaused
@@ -98,15 +94,14 @@ contract BridgeBase is IERC721Receiver, Ownable, Pausable {
     emit SwapInitialized(id, chainTo, block.chainid, msg.sender, to, Asset721(asset).tokenURI(id));
   }
 
-  /** @notice Transfers or mints item `id` to address `to`.
-   * @dev Must be signed and called by validator.
-   * @param hash Swap hash.
-   * @param sig An ECDSA signature.
-   * @param id Item ID.
-   * @param uri Item URI.
-   * @param to Address to transfer item to.
-   * @param chainFrom Id of the chain which called swap.
-   */
+  /// @notice Transfers or mints item `id` to address `to`.
+  /// @dev Must be signed and called by validator.
+  /// @param hash Swap hash.
+  /// @param sig An ECDSA signature.
+  /// @param id Item ID.
+  /// @param uri Item URI.
+  /// @param to Address to transfer item to.
+  /// @param chainFrom Id of the chain which called swap.
   function redeem(
     bytes32 hash,
     Sig memory sig,
@@ -142,22 +137,20 @@ contract BridgeBase is IERC721Receiver, Ownable, Pausable {
     emit SwapRedeemed(hash, id, chainFrom, to);
   }
 
-  /** @notice Pausing some functions of contract.
-    @dev Available only to admin.
-    Prevents calls to functions with `whenNotPaused` modifier.
-  */
+  /// @notice Pausing some functions of contract.
+  /// @dev Available only to admin.
+  /// Prevents calls to functions with `whenNotPaused` modifier.
   function pause() external onlyOwner {
     _pause();
   }
 
-  /** @notice Unpausing functions of contract.
-    @dev Available only to admin.
-  */
+  /// @notice Unpausing functions of contract.
+  /// @dev Available only to admin.
   function unpause() external onlyOwner {
     _unpause();
   }
 
-  /** Always returns `IERC721Receiver.onERC721Received.selector`. */
+  /// Always returns `IERC721Receiver.onERC721Received.selector`.
   function onERC721Received(address, address, uint256, bytes memory) public virtual override returns (bytes4) {
     return this.onERC721Received.selector;
   }

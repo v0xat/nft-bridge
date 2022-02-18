@@ -10,22 +10,22 @@ import "../Asset721.sol";
 
 /// @title Swaps ERC721 items between EVM compatible networks.
 contract BridgeBaseMock is IERC721Receiver, Ownable, Pausable {
-  /** Contracts chain id. */
+  /// Contracts chain id.
   uint256 public immutable chainId;
 
-  /** Backend signer address. */
+  /// Backend signer address.
   address public validator;
 
-  /** NFT contract address. */
+  /// NFT contract address.
   address public asset;
 
-  /* An ECDSA signature. */ 
+  /// An ECDSA signature.
   struct Sig {
-    /* v parameter */
+    /// v parameter
     uint8 v;
-    /* r parameter */
+    /// r parameter
     bytes32 r;
-    /* s parameter */
+    /// s parameter
     bytes32 s;
   }
 
@@ -120,22 +120,20 @@ contract BridgeBaseMock is IERC721Receiver, Ownable, Pausable {
     emit SwapRedeemed(hash, id, chainFrom, to);
   }
 
-  /** @notice Pausing some functions of contract.
-    @dev Available only to admin.
-    Prevents calls to functions with `whenNotPaused` modifier.
-  */
+  /// @notice Pausing some functions of contract.
+  /// @dev Available only to admin.
+  /// Prevents calls to functions with `whenNotPaused` modifier.
   function pause() external onlyOwner {
     _pause();
   }
 
-  /** @notice Unpausing functions of contract.
-    @dev Available only to admin.
-  */
+  /// @notice Unpausing functions of contract.
+  /// @dev Available only to admin.
   function unpause() external onlyOwner {
     _unpause();
   }
 
-  /** Always returns `IERC721Receiver.onERC721Received.selector`. */
+  /// Always returns `IERC721Receiver.onERC721Received.selector`.
   function onERC721Received(address, address, uint256, bytes memory) public virtual override returns (bytes4) {
     return this.onERC721Received.selector;
   }
