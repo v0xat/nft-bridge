@@ -5,9 +5,7 @@ import "./BridgeBaseMock.sol";
 
 /// @title This contract is just to simplify the deployment process.
 contract BridgeEthMock is BridgeBaseMock {
-  constructor(
-    address _validator,
-    address _asset,
-    uint256 _chainId
-  ) BridgeBaseMock(_validator, _asset, _chainId) {}
+    function initializeBridge(address _validator, address _asset, uint256 _chainId) external initializer {
+        BridgeBaseMock._initialize(_validator, _asset, _chainId);
+    }
 }

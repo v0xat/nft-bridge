@@ -5,8 +5,7 @@ import "./BridgeBase.sol";
 
 /// @title This contract is just to simplify the deployment process.
 contract BridgeBsc is BridgeBase {
-  constructor(
-    address _validator,
-    address _asset
-  ) BridgeBase(_validator, _asset) {}
+    function initializeBridge(address _validator, address _asset) external initializer {
+        BridgeBase._initialize(_validator, _asset);
+    }
 }
