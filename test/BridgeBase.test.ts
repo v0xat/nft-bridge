@@ -14,7 +14,6 @@ const rangeUnit = 10000;
 const uri = "https://gateway.pinata.cloud/ipfs/uri/{id}.json";
 
 // Bridge data
-const version = "1";
 const firstChain = {
   chainId: 1,
   itemId1: 1 * rangeUnit, // chainId * rangeUnit
@@ -68,6 +67,7 @@ describe("Bridge", function () {
       firstChain.chainId
     );
     await mainNFT.deployed();
+
     sideNFT = await new Asset721Mock__factory(owner).deploy(
       name,
       symbol,
@@ -85,7 +85,6 @@ describe("Bridge", function () {
     );
     await mainBridge.deployed();
 
-    // Deploy two bridges with different chainIds
     const SideBridge = await ethers.getContractFactory("BridgeBscMock");
     sideBridge = await upgrades.deployProxy(
       SideBridge,
