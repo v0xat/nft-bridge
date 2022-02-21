@@ -1,12 +1,13 @@
 import { HardhatUserConfig } from "hardhat/types";
 import "@nomiclabs/hardhat-waffle";
+import "@openzeppelin/hardhat-upgrades";
 import "hardhat-contract-sizer";
 import "solidity-coverage";
 import "@typechain/hardhat";
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.10",
+    version: "0.8.12",
     settings: {
       optimizer: {
         enabled: true,

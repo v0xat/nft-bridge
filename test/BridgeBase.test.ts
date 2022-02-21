@@ -1,13 +1,9 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import {
-  BridgeEthMock__factory,
-  BridgeBscMock__factory,
-  BridgeBaseMock,
-  Asset721Mock__factory,
-  Asset721Mock,
-} from "../types";
+import { Contract } from "ethers";
+
+import { Asset721Mock__factory, Asset721Mock } from "../types";
 
 import * as utils from "./utils";
 
@@ -18,7 +14,6 @@ const rangeUnit = 10000;
 const uri = "https://gateway.pinata.cloud/ipfs/uri/{id}.json";
 
 // Bridge data
-const version = "1";
 const firstChain = {
   chainId: 1,
   itemId1: 1 * rangeUnit, // chainId * rangeUnit
@@ -49,8 +44,8 @@ const signHash = async (signer: SignerWithAddress, bytes: Uint8Array) => {
 describe("Bridge", function () {
   let mainNFT: Asset721Mock,
     sideNFT: Asset721Mock,
-    mainBridge: BridgeBaseMock,
-    sideBridge: BridgeBaseMock,
+    mainBridge: Contract,
+    sideBridge: Contract,
     owner: SignerWithAddress,
     alice: SignerWithAddress,
     bob: SignerWithAddress,
@@ -72,6 +67,7 @@ describe("Bridge", function () {
       firstChain.chainId
     );
     await mainNFT.deployed();
+
     sideNFT = await new Asset721Mock__factory(owner).deploy(
       name,
       symbol,
@@ -81,17 +77,19 @@ describe("Bridge", function () {
     await sideNFT.deployed();
 
     // Deploy two bridges with different chainIds
-    mainBridge = await new BridgeEthMock__factory(owner).deploy(
-      gateway.address,
-      mainNFT.address,
-      firstChain.chainId
+    const MainBridge = await ethers.getContractFactory("BridgeEthMock");
+    mainBridge = await upgrades.deployProxy(
+      MainBridge,
+      [gateway.address, mainNFT.address, firstChain.chainId],
+      { initializer: "initializeBridge" }
     );
     await mainBridge.deployed();
 
-    sideBridge = await new BridgeBscMock__factory(owner).deploy(
-      gateway.address,
-      sideNFT.address,
-      secondChain.chainId
+    const SideBridge = await ethers.getContractFactory("BridgeBscMock");
+    sideBridge = await upgrades.deployProxy(
+      SideBridge,
+      [gateway.address, sideNFT.address, secondChain.chainId],
+      { initializer: "initializeBridge" }
     );
     await sideBridge.deployed();
 
@@ -123,16 +121,17 @@ describe("Bridge", function () {
   });
 
   describe("Deployment", function () {
-    it("Should deploy main bridge with correct params", async () => {
-      expect(await mainBridge.owner()).to.equal(owner.address);
-      expect(await mainBridge.asset()).to.equal(mainNFT.address);
-      expect(await mainBridge.validator()).to.equal(gateway.address);
+    it("Should set correct owners", async () => {
+      expect(await sideBridge.owner()).to.be.equal(owner.address);
+      expect(await mainBridge.owner()).to.be.equal(owner.address);
     });
+  });
 
-    it("Should deploy side bridge with correct params", async () => {
-      expect(await sideBridge.owner()).to.equal(owner.address);
-      expect(await sideBridge.asset()).to.equal(sideNFT.address);
-      expect(await sideBridge.validator()).to.equal(gateway.address);
+  describe("Upgradable", function () {
+    it("Works", async () => {
+      const MainBridgeV2 = await ethers.getContractFactory("BridgeEthMockV2");
+      const upgradedMain = await upgrades.upgradeProxy(mainBridge.address, MainBridgeV2);
+      expect(await upgradedMain.owner()).to.be.equal(owner.address);
     });
   });
 

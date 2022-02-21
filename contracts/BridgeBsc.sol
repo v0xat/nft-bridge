@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: MIT
-
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.12;
 
 import "./BridgeBase.sol";
 
-/** @notice This contract is just to simplify the deployment process. */
+/// @title This contract is just to simplify the deployment process.
 contract BridgeBsc is BridgeBase {
-  constructor(
-    address _validator,
-    address _asset
-  ) BridgeBase(_validator, _asset) {}
+    function initializeBridge(address _validator, address _asset) external initializer {
+        BridgeBase._initialize(_validator, _asset);
+    }
 }

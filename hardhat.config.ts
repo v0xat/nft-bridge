@@ -1,10 +1,10 @@
 import "dotenv/config";
-
 import { HardhatUserConfig, NetworkUserConfig } from "hardhat/types";
 import "hardhat-docgen";
 import "hardhat-contract-sizer";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
+import "@openzeppelin/hardhat-upgrades";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
@@ -45,7 +45,7 @@ function createNetworkConfig(network: keyof typeof chainIds): NetworkUserConfig 
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.10",
+    version: "0.8.12",
     settings: {
       optimizer: {
         enabled: true,
