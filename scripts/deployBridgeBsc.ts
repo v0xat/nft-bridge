@@ -24,7 +24,7 @@ async function main() {
   const bridge = await upgrades.deployProxy(
     Bridge,
     [process.env.BRIDGE_GATEWAY, process.env.NFT_ADDRESS],
-    { initializer: "initializeBridge" }
+    { kind: "uups", initializer: "initializeBridge" }
   );
   await bridge.deployed();
 

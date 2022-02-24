@@ -81,7 +81,7 @@ describe("Bridge", function () {
     mainBridge = await upgrades.deployProxy(
       MainBridge,
       [gateway.address, mainNFT.address, firstChain.chainId],
-      { initializer: "initializeBridge" }
+      { kind: "uups", initializer: "initializeBridge" }
     );
     await mainBridge.deployed();
 
@@ -89,7 +89,7 @@ describe("Bridge", function () {
     sideBridge = await upgrades.deployProxy(
       SideBridge,
       [gateway.address, sideNFT.address, secondChain.chainId],
-      { initializer: "initializeBridge" }
+      { kind: "uups", initializer: "initializeBridge" }
     );
     await sideBridge.deployed();
 

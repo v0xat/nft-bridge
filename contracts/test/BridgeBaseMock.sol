@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.12;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradeable.sol";
@@ -8,8 +9,8 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.
 
 import "../Asset721.sol";
 
-/// @title Swaps ERC721 items between EVM compatible networks.
-contract BridgeBaseMock is OwnableUpgradeable, PausableUpgradeable, IERC721ReceiverUpgradeable {
+/// @title Transfers ERC721 items between EVM compatible networks.
+contract BridgeBaseMock is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, IERC721ReceiverUpgradeable {
     /// Contracts chain id.
     uint256 private chainId;
 
@@ -54,6 +55,7 @@ contract BridgeBaseMock is OwnableUpgradeable, PausableUpgradeable, IERC721Recei
     mapping(bytes32 => bool) public redeemed;
 
     function _initialize(address _validator, address _asset, uint256 _chainId) internal initializer {
+        __UUPSUpgradeable_init();
         __Ownable_init();
         __Pausable_init();
 
@@ -136,4 +138,6 @@ contract BridgeBaseMock is OwnableUpgradeable, PausableUpgradeable, IERC721Recei
     function onERC721Received(address, address, uint256, bytes memory) public virtual override returns (bytes4) {
         return this.onERC721Received.selector;
     }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 }
